@@ -26,9 +26,10 @@ from keras.layers import Input, Lambda, Conv2D, MaxPooling2D
 from keras.layers import BatchNormalization, ELU, Reshape, Concatenate, Activation
 
 from keras_layer_L2Normalization import L2Normalization
-from nnBlocks import separable_res_block1, relu6, DepthwiseConv2D, _depthwise_conv_block_classification
-from nnBlocks import _depthwise_conv_block_detection, _conv_block, bn_conv, bn_conv_layer
+from nnBlocks import separable_res_block1, relu6, DepthwiseConv2D
+from nnBlocks import _conv_block, bn_conv, bn_conv_layer
 from nnBlocks import add_inception, Scaling
+from depthwiseBlocks import _depthwise_conv_block_detection, _depthwise_conv_block_classification
 
 mobilenet = True
 separable_filter = False
