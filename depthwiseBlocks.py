@@ -42,7 +42,7 @@ conv_has_bias = True #False for BN
 fc_has_bias = True
 
 
-def _depthwise_conv_block_classification(inputs, pointwise_conv_filters, alpha,
+def depthwiseConvBlockClassification(inputs, pointwise_conv_filters, alpha,
                           depth_multiplier=1, strides=(1, 1), block_id=1):
 
     channel_axis = 1 if K.image_data_format() == 'channels_first' else -1
@@ -67,7 +67,7 @@ def _depthwise_conv_block_classification(inputs, pointwise_conv_filters, alpha,
 
 
 
-def _depthwise_conv_block_detection(input, layer_name, strides = (1,1),
+def depthwiseConvBlockDetection(input, layer_name, strides = (1,1),
                           kernel_size = 3,
                           pointwise_conv_filters=32, alpha=1.0, depth_multiplier=1,
                           padding = 'valid',
