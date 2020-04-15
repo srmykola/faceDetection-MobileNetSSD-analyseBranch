@@ -30,7 +30,7 @@ from nnBlocks import separable_res_block1, relu6, DepthwiseConv2D
 from nnBlocks import _conv_block, bn_conv, bn_conv_layer
 from nnBlocks import add_inception, Scaling
 from depthwiseBlocks import depthwiseConvBlockDetection, depthwiseConvBlockClassification
-from depthwiseBlocks import depthwiseConvBlockAnalyseBackbone
+from depthwiseBlocks import depthwiseConvBlockAnalyseBackbone, depthwiseConvBlockAnalyseNeck
 
 mobilenet = True
 separable_filter = False
