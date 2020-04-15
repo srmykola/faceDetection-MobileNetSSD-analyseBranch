@@ -1,6 +1,6 @@
 from keras.layers import Input, Lambda
 
-from nnBlocks import _conv_block
+from nnBlocks import convBlock
 from depthwiseBlocks import depthwiseConvBlockClassification
 
 def mobileNetV1( inputShape, alpha = 1.0, depthMultiplier = 1, imgHeight = 512, imgWidth = 512, imgChannels = 3 ):
@@ -16,7 +16,7 @@ def mobileNetV1( inputShape, alpha = 1.0, depthMultiplier = 1, imgHeight = 512, 
     x = Lambda( lambda z: z * 2., output_shape = ( imgHeight, imgWidth, imgChannels ),
                    name = 'lambda3' )( x ) # Convert input feature range to [-1,1]
 
-    x = _conv_block(x, 32, alpha, strides=(2, 2))
+    x = convBlock(x, 32, alpha, strides=(2, 2))
     x = depthwiseConvBlockClassification(x, 64, alpha, depthMultiplier, block_id=1)
     x = depthwiseConvBlockClassification(x, 128, alpha, depthMultiplier, strides=(2, 2), block_id=2)
     x = depthwiseConvBlockClassification(x, 128, alpha, depthMultiplier, block_id=3)

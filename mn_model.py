@@ -22,13 +22,10 @@ from keras.layers.noise import *
 import tensorflow as tf
 
 from keras.models import Model
-from keras.layers import Conv2D, MaxPooling2D
 from keras.layers import BatchNormalization, ELU, Reshape, Concatenate, Activation
 
 from keras_layer_L2Normalization import L2Normalization
-from nnBlocks import separable_res_block1, relu6, DepthwiseConv2D
-from nnBlocks import _conv_block, bn_conv, bn_conv_layer
-from nnBlocks import add_inception, Scaling
+from nnBlocks import bnConv
 from depthwiseBlocks import depthwiseConvBlockDetection
 from depthwiseBlocks import depthwiseConvBlockAnalyseBackbone, depthwiseConvBlockAnalyseNeck
 
@@ -142,26 +139,26 @@ def mn_model(image_size,
                                                                     imgHeight = imgHeight, imgWidth = imgWidth, imgChannels = imgChannels)
 
     ''' SSD layers'''
-    conv6_1 = bn_conv(fc7, 'detection_conv6_1', 256, 1, 1, subsample =(1,1), border_mode ='same', bias=conv_has_bias)
+    conv6_1 = bnConv(fc7, 'detection_conv6_1', 256, 1, 1, subsample =(1,1), border_mode ='same', bias=conv_has_bias)
     conv6_2 = depthwiseConvBlockDetection(input = conv6_1, layer_name='detection_conv6_2', strides=(2,2),
                                         pointwise_conv_filters=512, alpha=alpha, depthMultiplier = depthMultiplier,
                                         padding = 'same', use_bias = True, block_id=1)
 
-    conv7_1 = bn_conv(conv6_2, 'detection_conv7_1', 128, 1, 1, subsample =(1,1), border_mode ='same', bias=conv_has_bias)
+    conv7_1 = bnConv(conv6_2, 'detection_conv7_1', 128, 1, 1, subsample =(1,1), border_mode ='same', bias=conv_has_bias)
     conv7_2 = depthwiseConvBlockDetection(input = conv7_1, layer_name='detection_conv7_2', strides=(2,2),
                                         pointwise_conv_filters=256, alpha=alpha, depthMultiplier = depthMultiplier,
                                         padding = 'same', use_bias = True, block_id=2)
     #conv7_1 = Conv2D(128, (1, 1), activation='relu', padding='same', name='detection_conv7_1')(conv6_2)
     #conv7_2 = Conv2D(256, (3, 3), strides=(2, 2), activation='relu', padding='same', name='detection_conv7_2')(conv7_1)
 
-    conv8_1 = bn_conv(conv7_2, 'detection_conv8_1', 128, 1, 1, subsample =(1,1), border_mode ='same', bias=conv_has_bias)
+    conv8_1 = bnConv(conv7_2, 'detection_conv8_1', 128, 1, 1, subsample =(1,1), border_mode ='same', bias=conv_has_bias)
     conv8_2 = depthwiseConvBlockDetection(input = conv8_1, layer_name='detection_conv8_2', strides=(2,2),
                             pointwise_conv_filters=256, alpha=alpha, depthMultiplier=depthMultiplier,
                             padding = 'same', use_bias = True, block_id=3)
-    # # conv8_2 = bn_conv(conv8_1, 'detection_conv8_2', 256, 2, 2, subsample =(1,1), border_mode ='same', bias=conv_has_bias)
+    # # conv8_2 = bnConv(conv8_1, 'detection_conv8_2', 256, 2, 2, subsample =(1,1), border_mode ='same', bias=conv_has_bias)
 
-    conv9_1 = bn_conv(conv8_2, 'detection_conv9_1', 64, 1, 1,  subsample =(1,1), border_mode ='same', bias=conv_has_bias)
-    # conv9_2 = bn_conv(conv9_1, 'detection_conv9_2', 128, 3, 3, subsample =(2,2), border_mode ='same', bias=conv_has_bias)
+    conv9_1 = bnConv(conv8_2, 'detection_conv9_1', 64, 1, 1,  subsample =(1,1), border_mode ='same', bias=conv_has_bias)
+    # conv9_2 = bnConv(conv9_1, 'detection_conv9_2', 128, 3, 3, subsample =(2,2), border_mode ='same', bias=conv_has_bias)
     conv9_2 = depthwiseConvBlockDetection(input = conv9_1, layer_name='detection_conv9_2', strides=(2,2),
                                     pointwise_conv_filters=256, alpha=alpha, depthMultiplier=depthMultiplier,
                                     padding = 'same', use_bias = True, block_id=4)
@@ -173,22 +170,22 @@ def mn_model(image_size,
     x_analyse = depthwiseConvBlockAnalyseBackbone( conv4_3_analyse, 1024, alpha, depthMultiplier, strides = (2, 2), block_id = 12, layer_name = 'x_analyse' )   # (300x300) -> 10x10
     fc7_analyse = depthwiseConvBlockAnalyseBackbone( x_analyse, 1024, alpha, depthMultiplier, block_id = 13, layer_name = 'fc7_analyse' ) # 13 fc7 (300x300) -> 10x10
 
-    conv6_1_analyse = bn_conv( fc7_analyse, 'analyse_conv6_1', 256, 1, 1, subsample =(1,1), border_mode ='same', bias=conv_has_bias)
+    conv6_1_analyse = bnConv( fc7_analyse, 'analyse_conv6_1', 256, 1, 1, subsample =(1,1), border_mode ='same', bias=conv_has_bias)
     conv6_2_analyse = depthwiseConvBlockAnalyseNeck( input = conv6_1_analyse, layer_name='analyse_conv6_2', strides=(2,2),
                                                     pointwise_conv_filters=512, alpha=alpha, depthMultiplier=depthMultiplier,
                                                     padding = 'same', use_bias = True, block_id=1)
 
-    conv7_1_analyse = bn_conv( conv6_2_analyse, 'analyse_conv7_1', 128, 1, 1, subsample =(1,1), border_mode ='same', bias=conv_has_bias)
+    conv7_1_analyse = bnConv( conv6_2_analyse, 'analyse_conv7_1', 128, 1, 1, subsample =(1,1), border_mode ='same', bias=conv_has_bias)
     conv7_2_analyse = depthwiseConvBlockAnalyseNeck(input = conv7_1_analyse, layer_name='analyse_conv7_2', strides=(2,2),
                                                     pointwise_conv_filters=256, alpha=alpha, depthMultiplier=depthMultiplier,
                                                     padding = 'same', use_bias = True, block_id=2)
 
-    conv8_1_analyse = bn_conv( conv7_2_analyse, 'analyse_conv8_1', 128, 1, 1, subsample =(1,1), border_mode ='same', bias=conv_has_bias)
+    conv8_1_analyse = bnConv( conv7_2_analyse, 'analyse_conv8_1', 128, 1, 1, subsample =(1,1), border_mode ='same', bias=conv_has_bias)
     conv8_2_analyse = depthwiseConvBlockAnalyseNeck( input = conv8_1_analyse, layer_name='analyse_conv8_2', strides=(2,2),
                                                     pointwise_conv_filters=256, alpha=alpha, depthMultiplier=depthMultiplier,
                                                     padding = 'same', use_bias = True, block_id=3)
 
-    conv9_1_analyse = bn_conv( conv8_2_analyse, 'analyse_conv9_1', 64, 1, 1,  subsample = (1,1), border_mode ='same', bias=conv_has_bias)
+    conv9_1_analyse = bnConv( conv8_2_analyse, 'analyse_conv9_1', 64, 1, 1,  subsample = (1,1), border_mode ='same', bias=conv_has_bias)
     conv9_2_analyse = depthwiseConvBlockAnalyseNeck( input = conv9_1_analyse, layer_name = 'analyse_conv9_2', strides=(2,2),
                                                     pointwise_conv_filters=256, alpha=alpha, depthMultiplier=depthMultiplier,
                                                     padding = 'same', use_bias = True, block_id=4)

@@ -25,12 +25,9 @@ from keras.models import Model
 from keras.layers import Input, Lambda, Conv2D, MaxPooling2D
 from keras.layers import BatchNormalization, ELU, Reshape, Concatenate, Activation
 
-from keras_layer_L2Normalization import L2Normalization
-
 mobilenet = True
 separable_filter = False
 conv_model = False
-# tf = K.tf
 dropout_rate = 0.55
 W_regularizer = None
 init_ = 'glorot_uniform'
@@ -41,8 +38,8 @@ fc_has_bias = True
 #Separable filter
 def separable_res_block1(input_layer, layer_name, nb_filter, nb_row, subsample=(1,1)):
     x = input_layer
-    x_right = bn_conv_layer(x, layer_name + '_right', nb_filter, 1, nb_row, subsample)
-    x_left  = bn_conv_layer(x, layer_name + '_left',  nb_filter, nb_row, 1, subsample)
+    x_right = bnConv_layer(x, layer_name + '_right', nb_filter, 1, nb_row, subsample)
+    x_left  = bnConv_layer(x, layer_name + '_left',  nb_filter, nb_row, 1, subsample)
     x = Lambda(lambda z : (z[0] + z[1])/2., name = layer_name + '_merge')([x_right,x_left])
     return x
 
@@ -182,7 +179,7 @@ class DepthwiseConv2D(Conv2D):
 
 ########################################################################
 
-def _conv_block(inputs, filters, alpha, kernel=(3, 3), strides=(1, 1)):
+def convBlock( inputs, filters, alpha, kernel = (3, 3), strides = (1, 1) ):
 
     channel_axis = 1 if K.image_data_format() == 'channels_first' else -1
     filters = int(filters * alpha)
@@ -194,7 +191,7 @@ def _conv_block(inputs, filters, alpha, kernel=(3, 3), strides=(1, 1)):
     x = BatchNormalization(axis=channel_axis, name='conv1_bn')(x)
     return Activation(relu6, name='conv1_relu')(x)
 
-def bn_conv(input_layer, layer_name, nb_filter, nb_row, nb_col, subsample =(1,1), border_mode ='same', bias=conv_has_bias):
+def bnConv(input_layer, layer_name, nb_filter, nb_row, nb_col, subsample =(1,1), border_mode ='same', bias=conv_has_bias):
     tmp_layer = input_layer
     tmp_layer = Convolution2D(nb_filter, nb_row, nb_col, subsample=subsample, activation=None, border_mode=border_mode, name = layer_name, bias=bias, init=init_, W_regularizer= W_regularizer)(tmp_layer)
     tmp_layer = BatchNormalization(name = layer_name + '_bn')(tmp_layer)
@@ -202,7 +199,7 @@ def bn_conv(input_layer, layer_name, nb_filter, nb_row, nb_col, subsample =(1,1)
     return tmp_layer
 
 
-def bn_conv_layer(input_layer, layer_name, nb_filter, nb_row, nb_col, subsample=(1,1), border_mode = 'same',bias=conv_has_bias):
+def bnConv_layer(input_layer, layer_name, nb_filter, nb_row, nb_col, subsample=(1,1), border_mode = 'same',bias=conv_has_bias):
     tmp_layer = input_layer
     tmp_layer = Convolution2D(nb_filter, nb_row, nb_col,subsample=subsample, activation=None, border_mode=border_mode, name=layer_name, bias=bias, init=init_, W_regularizer=W_regularizer)(tmp_layer)
     tmp_layer = Scaling(name=layer_name + '_scale')(tmp_layer)
@@ -210,16 +207,16 @@ def bn_conv_layer(input_layer, layer_name, nb_filter, nb_row, nb_col, subsample=
     return tmp_layer
 
 def add_inception(input_layer, list_nb_filter, base_name):
-    tower_1_1 = bn_conv_layer(input_layer=input_layer, layer_name=base_name + '_1x1', nb_filter=list_nb_filter[0], nb_row=1, nb_col=1)
+    tower_1_1 = bnConv_layer(input_layer=input_layer, layer_name=base_name + '_1x1', nb_filter=list_nb_filter[0], nb_row=1, nb_col=1)
 
-    tower_2_1 = bn_conv_layer(input_layer=input_layer, layer_name=base_name + '_3x3_reduce', nb_filter=list_nb_filter[1], nb_row=1, nb_col=1)
-    tower_2_2 = bn_conv_layer(input_layer=tower_2_1, layer_name=base_name + '_3x3', nb_filter=list_nb_filter[2], nb_row=3, nb_col=3)
+    tower_2_1 = bnConv_layer(input_layer=input_layer, layer_name=base_name + '_3x3_reduce', nb_filter=list_nb_filter[1], nb_row=1, nb_col=1)
+    tower_2_2 = bnConv_layer(input_layer=tower_2_1, layer_name=base_name + '_3x3', nb_filter=list_nb_filter[2], nb_row=3, nb_col=3)
 
-    tower_3_1 = bn_conv_layer(input_layer=input_layer, layer_name=base_name + '_5x5_reduce',nb_filter=list_nb_filter[3],nb_row=1, nb_col=1)
-    tower_3_2 = bn_conv_layer(input_layer=tower_3_1, layer_name=base_name + '_5x5', nb_filter=list_nb_filter[4], nb_row=5, nb_col=5)
+    tower_3_1 = bnConv_layer(input_layer=input_layer, layer_name=base_name + '_5x5_reduce',nb_filter=list_nb_filter[3],nb_row=1, nb_col=1)
+    tower_3_2 = bnConv_layer(input_layer=tower_3_1, layer_name=base_name + '_5x5', nb_filter=list_nb_filter[4], nb_row=5, nb_col=5)
 
     tower_4_1 = MaxPooling2D(name=base_name + '_pool',pool_size=(3, 3), strides=(1, 1), border_mode='same')(input_layer)
-    tower_4_2 = bn_conv_layer(input_layer=tower_4_1, layer_name=base_name + '_pool_proj', nb_filter=list_nb_filter[5],nb_row=1, nb_col=1)
+    tower_4_2 = bnConv_layer(input_layer=tower_4_1, layer_name=base_name + '_pool_proj', nb_filter=list_nb_filter[5],nb_row=1, nb_col=1)
 
     return merge(inputs=[tower_1_1,tower_2_2,tower_3_2,tower_4_2], mode='concat',name=base_name + '_output')
 
