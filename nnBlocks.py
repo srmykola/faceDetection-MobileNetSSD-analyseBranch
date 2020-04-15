@@ -59,7 +59,7 @@ class DepthwiseConv2D(Conv2D):
                  kernel_size,
                  strides=(1, 1),
                  padding='valid',
-                 depth_multiplier=1,
+                 depthMultiplier=1,
                  data_format=None,
                  activation=None,
                  use_bias=True,
@@ -83,7 +83,7 @@ class DepthwiseConv2D(Conv2D):
             activity_regularizer=activity_regularizer,
             bias_constraint=bias_constraint,
             **kwargs)
-        self.depth_multiplier = depth_multiplier
+        self.depthMultiplier = depthMultiplier
         self.depthwise_initializer = initializers.get(depthwise_initializer)
         self.depthwise_regularizer = regularizers.get(depthwise_regularizer)
         self.depthwise_constraint = constraints.get(depthwise_constraint)
@@ -105,7 +105,7 @@ class DepthwiseConv2D(Conv2D):
         depthwise_kernel_shape = (self.kernel_size[0],
                                   self.kernel_size[1],
                                   input_dim,
-                                  self.depth_multiplier)
+                                  self.depthMultiplier)
 
         self.depthwise_kernel = self.add_weight(
             shape=depthwise_kernel_shape,
@@ -115,7 +115,7 @@ class DepthwiseConv2D(Conv2D):
             constraint=self.depthwise_constraint)
 
         if self.use_bias:
-            self.bias = self.add_weight(shape=(input_dim * self.depth_multiplier,),
+            self.bias = self.add_weight(shape=(input_dim * self.depthMultiplier,),
                                         initializer=self.bias_initializer,
                                         name='bias',
                                         regularizer=self.bias_regularizer,
@@ -150,11 +150,11 @@ class DepthwiseConv2D(Conv2D):
         if self.data_format == 'channels_first':
             rows = input_shape[2]
             cols = input_shape[3]
-            out_filters = input_shape[1] * self.depth_multiplier
+            out_filters = input_shape[1] * self.depthMultiplier
         elif self.data_format == 'channels_last':
             rows = input_shape[1]
             cols = input_shape[2]
-            out_filters = input_shape[3] * self.depth_multiplier
+            out_filters = input_shape[3] * self.depthMultiplier
 
         rows = conv_utils.conv_output_length(rows, self.kernel_size[0],
                                              self.padding,
@@ -174,7 +174,7 @@ class DepthwiseConv2D(Conv2D):
         config.pop('kernel_initializer')
         config.pop('kernel_regularizer')
         config.pop('kernel_constraint')
-        config['depth_multiplier'] = self.depth_multiplier
+        config['depthMultiplier'] = self.depthMultiplier
         config['depthwise_initializer'] = initializers.serialize(self.depthwise_initializer)
         config['depthwise_regularizer'] = regularizers.serialize(self.depthwise_regularizer)
         config['depthwise_constraint'] = constraints.serialize(self.depthwise_constraint)

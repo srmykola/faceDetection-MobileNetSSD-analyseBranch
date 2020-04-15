@@ -43,14 +43,14 @@ fc_has_bias = True
 
 
 def depthwiseConvBlockClassification(inputs, pointwise_conv_filters, alpha,
-                          depth_multiplier=1, strides=(1, 1), block_id=1):
+                          depthMultiplier=1, strides=(1, 1), block_id=1):
 
     channel_axis = 1 if K.image_data_format() == 'channels_first' else -1
     pointwise_conv_filters = int(pointwise_conv_filters * alpha)
 
     x = DepthwiseConv2D((3, 3),
                         padding='same',
-                        depth_multiplier=depth_multiplier,
+                        depthMultiplier=depthMultiplier,
                         strides=strides,
                         use_bias=False,
                         name='conv_dw_%d' % block_id)(inputs)
@@ -66,7 +66,7 @@ def depthwiseConvBlockClassification(inputs, pointwise_conv_filters, alpha,
     return Activation(relu6, name='conv_pw_%d_relu' % block_id)(x)
 
 def depthwiseConvBlockAnalyseBackbone(inputs, pointwise_conv_filters, alpha,
-                          depth_multiplier = 1, strides = (1, 1), block_id = 1,
+                          depthMultiplier = 1, strides = (1, 1), block_id = 1,
                           layer_name = 'analyse'):
 
     channel_axis = 1 if K.image_data_format() == 'channels_first' else -1
@@ -74,7 +74,7 @@ def depthwiseConvBlockAnalyseBackbone(inputs, pointwise_conv_filters, alpha,
 
     x = DepthwiseConv2D( (3, 3),
                         padding = 'same',
-                        depth_multiplier = depth_multiplier,
+                        depthMultiplier = depthMultiplier,
                         strides = strides,
                         use_bias = False,
                         name = layer_name + 'conv_dw_%d' % block_id )( inputs )
@@ -91,7 +91,7 @@ def depthwiseConvBlockAnalyseBackbone(inputs, pointwise_conv_filters, alpha,
 
 def depthwiseConvBlockDetection(input, layer_name, strides = (1,1),
                           kernel_size = 3,
-                          pointwise_conv_filters=32, alpha=1.0, depth_multiplier=1,
+                          pointwise_conv_filters=32, alpha=1.0, depthMultiplier=1,
                           padding = 'valid',
                           data_format = None,
                           activation = None, use_bias = True,
@@ -107,7 +107,7 @@ def depthwiseConvBlockDetection(input, layer_name, strides = (1,1),
 
     x = DepthwiseConv2D((kernel_size, kernel_size),
                         padding=padding,
-                        depth_multiplier=depth_multiplier,
+                        depthMultiplier=depthMultiplier,
                         strides=strides,
                         use_bias=False,
                         name=layer_name + '_conv_dw_%d' % block_id)(input)
@@ -125,7 +125,7 @@ def depthwiseConvBlockDetection(input, layer_name, strides = (1,1),
 
 def depthwiseConvBlockAnalyseNeck(input, layer_name, strides = (1,1),
                                   kernel_size = 3,
-                                  pointwise_conv_filters=32, alpha=1.0, depth_multiplier=1,
+                                  pointwise_conv_filters=32, alpha=1.0, depthMultiplier = 1,
                                   padding = 'valid',
                                   data_format = None,
                                   activation = None, use_bias = True,
@@ -141,7 +141,7 @@ def depthwiseConvBlockAnalyseNeck(input, layer_name, strides = (1,1),
 
     x = DepthwiseConv2D((kernel_size, kernel_size),
                         padding=padding,
-                        depth_multiplier=depth_multiplier,
+                        depthMultiplier = depthMultiplier,
                         strides=strides,
                         use_bias=False,
                         name=layer_name + '_conv_dw_%d' % block_id)(input)
