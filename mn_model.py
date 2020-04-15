@@ -30,6 +30,7 @@ from nnBlocks import separable_res_block1, relu6, DepthwiseConv2D
 from nnBlocks import _conv_block, bn_conv, bn_conv_layer
 from nnBlocks import add_inception, Scaling
 from depthwiseBlocks import depthwiseConvBlockDetection, depthwiseConvBlockClassification
+from depthwiseBlocks import depthwiseConvBlockAnalyseBackbone
 
 mobilenet = True
 separable_filter = False
@@ -46,6 +47,7 @@ fc_has_bias = True
 
 def mn_model(image_size,
                 n_classes,
+                nTasks,
                 min_scale=0.1,
                 max_scale=0.9,
                 scales=None,
@@ -148,27 +150,19 @@ def mn_model(image_size,
 
     x = _conv_block(x, 32, alpha, strides=(2, 2))
     x = depthwiseConvBlockClassification(x, 64, alpha, depth_multiplier, block_id=1)
-
-    x = depthwiseConvBlockClassification(x, 128, alpha, depth_multiplier,
-                              strides=(2, 2), block_id=2)
+    x = depthwiseConvBlockClassification(x, 128, alpha, depth_multiplier, strides=(2, 2), block_id=2)
     x = depthwiseConvBlockClassification(x, 128, alpha, depth_multiplier, block_id=3)
-
-    x = depthwiseConvBlockClassification(x, 256, alpha, depth_multiplier,
-                              strides=(2, 2), block_id=4)
+    x = depthwiseConvBlockClassification(x, 256, alpha, depth_multiplier, strides=(2, 2), block_id=4)
     x = depthwiseConvBlockClassification(x, 256, alpha, depth_multiplier, block_id=5)
-
-    x = depthwiseConvBlockClassification(x, 512, alpha, depth_multiplier,
-                              strides=(2, 2), block_id=6)
+    x = depthwiseConvBlockClassification(x, 512, alpha, depth_multiplier, strides=(2, 2), block_id=6)
     x = depthwiseConvBlockClassification(x, 512, alpha, depth_multiplier, block_id=7)
     x = depthwiseConvBlockClassification(x, 512, alpha, depth_multiplier, block_id=8)
     x = depthwiseConvBlockClassification(x, 512, alpha, depth_multiplier, block_id=9)
-    x = depthwiseConvBlockClassification(x, 512, alpha, depth_multiplier, block_id=10)
-    conv4_3 = depthwiseConvBlockClassification(x, 512, alpha, depth_multiplier, block_id=11) #11 conv4_3 (300x300)-> 19x19
+    analyseBranchIntersection = depthwiseConvBlockClassification(x, 512, alpha, depth_multiplier, block_id=10)
+    conv4_3 = depthwiseConvBlockClassification( analyseBranchIntersection, 512, alpha, depth_multiplier, block_id = 11 ) #11 conv4_3 (300x300)-> 19x19
 
-    x = depthwiseConvBlockClassification(conv4_3, 1024, alpha, depth_multiplier,
-                              strides=(2, 2), block_id=12)   # (300x300) -> 10x10
+    x = depthwiseConvBlockClassification( conv4_3, 1024, alpha, depth_multiplier, strides = (2, 2), block_id = 12 )   # (300x300) -> 10x10
     fc7 = depthwiseConvBlockClassification(x, 1024, alpha, depth_multiplier, block_id=13) # 13 fc7 (300x300) -> 10x10
-
 
     conv6_1 = bn_conv(fc7, 'detection_conv6_1', 256, 1, 1, subsample =(1,1), border_mode ='same', bias=conv_has_bias)
     conv6_2 = depthwiseConvBlockDetection(input = conv6_1, layer_name='detection_conv6_2', strides=(2,2),
@@ -183,29 +177,88 @@ def mn_model(image_size,
     #conv7_2 = Conv2D(256, (3, 3), strides=(2, 2), activation='relu', padding='same', name='detection_conv7_2')(conv7_1)
 
     conv8_1 = bn_conv(conv7_2, 'detection_conv8_1', 128, 1, 1, subsample =(1,1), border_mode ='same', bias=conv_has_bias)
-
     conv8_2 = depthwiseConvBlockDetection(input = conv8_1, layer_name='detection_conv8_2', strides=(2,2),
                             pointwise_conv_filters=256, alpha=alpha, depth_multiplier=depth_multiplier,
                             padding = 'same', use_bias = True, block_id=3)
-
     # # conv8_2 = bn_conv(conv8_1, 'detection_conv8_2', 256, 2, 2, subsample =(1,1), border_mode ='same', bias=conv_has_bias)
 
     conv9_1 = bn_conv(conv8_2, 'detection_conv9_1', 64, 1, 1,  subsample =(1,1), border_mode ='same', bias=conv_has_bias)
     # conv9_2 = bn_conv(conv9_1, 'detection_conv9_2', 128, 3, 3, subsample =(2,2), border_mode ='same', bias=conv_has_bias)
-
     conv9_2 = depthwiseConvBlockDetection(input = conv9_1, layer_name='detection_conv9_2', strides=(2,2),
                                     pointwise_conv_filters=256, alpha=alpha, depth_multiplier=depth_multiplier,
                                     padding = 'same', use_bias = True, block_id=4)
 
+    ''' Analyse branch '''
+
+    conv4_3_analyse = depthwiseConvBlockAnalyseBackbone( analyseBranchIntersection, 512, alpha, depth_multiplier, block_id = 11 ) #11 conv4_3 (300x300)-> 19x19
+
+    x_analyse = depthwiseConvBlockAnalyseBackbone( conv4_3_analyse, 1024, alpha, depth_multiplier, strides = (2, 2), block_id = 12 )   # (300x300) -> 10x10
+    fc7_analyse = depthwiseConvBlockAnalyseBackbone( x_analyse, 1024, alpha, depth_multiplier, block_id = 13 ) # 13 fc7 (300x300) -> 10x10
+
+    conv6_1_analyse = bn_conv( fc7_analyse, 'analyse_conv6_1', 256, 1, 1, subsample =(1,1), border_mode ='same', bias=conv_has_bias)
+    conv6_2_analyse = depthwiseConvBlockAnalyseNeck( input = conv6_1_analyse, layer_name='analyse_conv6_2', strides=(2,2),
+                                                    pointwise_conv_filters=512, alpha=alpha, depth_multiplier=depth_multiplier,
+                                                    padding = 'same', use_bias = True, block_id=1)
+
+    conv7_1_analyse = bn_conv( conv6_2_analyse, 'analyse_conv7_1', 128, 1, 1, subsample =(1,1), border_mode ='same', bias=conv_has_bias)
+    conv7_2_analyse = depthwiseConvBlockAnalyseNeck(input = conv7_1_analyse, layer_name='analyse_conv7_2', strides=(2,2),
+                                                    pointwise_conv_filters=256, alpha=alpha, depth_multiplier=depth_multiplier,
+                                                    padding = 'same', use_bias = True, block_id=2)
+
+    conv8_1_analyse = bn_conv( conv7_2_analyse, 'analyse_conv8_1', 128, 1, 1, subsample =(1,1), border_mode ='same', bias=conv_has_bias)
+    conv8_2_analyse = depthwiseConvBlockAnalyseNeck( input = conv8_1_analyse, layer_name='analyse_conv8_2', strides=(2,2),
+                                                    pointwise_conv_filters=256, alpha=alpha, depth_multiplier=depth_multiplier,
+                                                    padding = 'same', use_bias = True, block_id=3)
+
+    conv9_1_analyse = bn_conv( conv8_2_analyse, 'analyse_conv9_1', 64, 1, 1,  subsample = (1,1), border_mode ='same', bias=conv_has_bias)
+    conv9_2_analyse = depthwiseConvBlockAnalyseNeck( input = conv9_1_analyse, layer_name = 'analyse_conv9_2', strides=(2,2),
+                                                    pointwise_conv_filters=256, alpha=alpha, depth_multiplier=depth_multiplier,
+                                                    padding = 'same', use_bias = True, block_id=4)
+
+    # Analyse heatmaps
+    conv4_3_norm_analyse = L2Normalization( gamma_init=20, name = 'analyse_conv4_3_norm' )( conv4_3_analyse )
+    conv4_3_norm_analyse_heatmaps = depthwiseConvBlockAnalyseNeck( input = conv4_3_norm_analyse, layer_name='analyse_conv4_3_norm_heatmaps', strides=(1,1),
+                                                                    pointwise_conv_filters = n_boxes_conv4_3 * nTasks, alpha=alpha, depth_multiplier=depth_multiplier,
+                                                                    padding = 'same', use_bias = True, block_id=1 )
+    fc7_analyse_heatmaps = depthwiseConvBlockAnalyseNeck( input = fc7_analyse, layer_name = 'analyse_fc7_heatmaps', strides=(1,1),
+                                                        pointwise_conv_filters = n_boxes_fc7 * nTasks, alpha = alpha, depth_multiplier = depth_multiplier,
+                                                        padding = 'same', use_bias = True, block_id=2 )
+    conv6_2_analyse_heatmaps = depthwiseConvBlockAnalyseNeck( input = conv6_2_analyse, layer_name = 'analyse_conv6_2_heatmaps', strides=(1,1),
+                                                            pointwise_conv_filters = n_boxes_conv6_2 * nTasks, alpha = alpha, depth_multiplier = depth_multiplier,
+                                                            padding = 'same', use_bias = True, block_id = 3 )
+    conv7_2_analyse_heatmaps = depthwiseConvBlockAnalyseNeck( input = conv7_2_analyse, layer_name = 'analyse_conv7_2_heatmaps', strides = (1,1),
+                                                            pointwise_conv_filters = n_boxes_conv7_2 * nTasks, alpha = alpha, depth_multiplier = depth_multiplier,
+                                                            padding = 'same', use_bias = True, block_id = 4 )
+    conv8_2_analyse_heatmaps = depthwiseConvBlockAnalyseNeck( input = conv8_2_analyse, layer_name = 'analyse_conv8_2_heatmaps', strides = (1,1),
+                                                            pointwise_conv_filters = n_boxes_conv8_2 * nTasks, alpha = alpha, depth_multiplier = depth_multiplier,
+                                                            padding = 'same', use_bias = True, block_id = 5 )
+    conv9_2_analyse_heatmaps = depthwiseConvBlockAnalyseNeck( input = conv9_2_analyse, layer_name = 'analyse_conv9_2_heatmaps', strides = (1,1),
+                                                            pointwise_conv_filters = n_boxes_conv9_2 * nTasks, alpha = alpha, depth_multiplier = depth_multiplier,
+                                                            padding = 'same', use_bias = True, block_id=6)
+
+    conv4_3_norm_analyse_heatmaps_reshape = Reshape( (-1, nTasks), name = 'analyse_conv4_3_norm_heatmaps_reshape' )( conv4_3_norm_analyse_heatmaps )
+    fc7_analyse_heatmaps_reshape = Reshape( (-1, nTasks), name = 'analyse_fc7_heatmaps_reshape' )( fc7_analyse_heatmaps )
+    conv6_2_analyse_heatmaps_reshape = Reshape( (-1, nTasks), name = 'analyse_conv6_2_heatmaps_reshape' )( conv6_2_analyse_heatmaps )
+    conv7_2_analyse_heatmaps_reshape = Reshape( (-1, nTasks), name = 'analyse_conv7_2_heatmaps_reshape' )( conv7_2_analyse_heatmaps )
+    conv8_2_analyse_heatmaps_reshape = Reshape( (-1, nTasks), name = 'analyse_conv8_2_heatmaps_reshape' )( conv8_2_analyse_heatmaps )
+    conv9_2_analyse_heatmaps_reshape = Reshape( (-1, nTasks), name = 'analyse_conv9_2_heatmaps_reshape' )( conv9_2_analyse_heatmaps )
+
+    analyseHeatmaps = Concatenate(axis=1, name='analyse_heatmaps')( [conv4_3_norm_analyse_heatmaps_reshape,
+                                                                   fc7_analyse_heatmaps_reshape,
+                                                                   conv6_2_analyse_heatmaps_reshape,
+                                                                   conv7_2_analyse_heatmaps_reshape,
+                                                                   conv8_2_analyse_heatmaps_reshape,
+                                                                   conv9_2_analyse_heatmaps_reshape] )
+
+    analyseHeatmapsSoftmax = Activation( 'softmax', name='analyse_hetmaps_softmax' )( analyseHeatmaps )
+
+    ''' End of analyse branch '''
 
     # Feed conv4_3 into the L2 normalization layer
     conv4_3_norm = L2Normalization(gamma_init=20, name='detection_conv4_3_norm')(conv4_3)
-
-
     conv4_3_norm_mbox_conf = depthwiseConvBlockDetection(input = conv4_3_norm, layer_name='detection_conv4_3_norm_mbox_conf', strides=(1,1),
                                     pointwise_conv_filters=n_boxes_conv4_3 * n_classes, alpha=alpha, depth_multiplier=depth_multiplier,
                                     padding = 'same', use_bias = True, block_id=1)
-
 
     fc7_mbox_conf = depthwiseConvBlockDetection(input = fc7, layer_name='detection_fc7_mbox_conf', strides=(1,1),
                                     pointwise_conv_filters=n_boxes_fc7 * n_classes, alpha=alpha, depth_multiplier=depth_multiplier,
@@ -326,13 +379,13 @@ def mn_model(image_size,
 
     # The box coordinate predictions will go into the loss function just the way they are,
     # but for the class predictions, we'll apply a softmax activation layer first
-    mbox_conf_softmax = Activation('softmax', name='detection_mbox_conf_softmax')(mbox_conf)
+    mbox_conf_softmax = Activation('softmax', name='detection_mbox_conf_softmax')( mbox_conf )
 
     # Concatenate the class and box predictions and the anchors to one large predictions vector
     # Output shape of `predictions`: (batch, n_boxes_total, n_classes + 4 + 8)
-    predictions = Concatenate(axis=2, name='detection_predictions')([mbox_conf_softmax, mbox_loc, mbox_priorbox])
+    predictions = Concatenate( axis = 2, name = 'detection_predictions')([ mbox_conf_softmax, mbox_loc, mbox_priorbox, analyseHeatmapsSoftmax ])
 
-    model = Model(inputs=img_input, outputs=predictions)
+    model = Model( inputs = img_input, outputs = predictions )
     #model = Model(inputs=img_input, outputs=predictions)
 
 
@@ -343,14 +396,14 @@ def mn_model(image_size,
     # Instead, we'll do it in the batch generator function.
     # The spatial dimensions are the same for the confidence and localization predictors, so we just take those of the conf layers.
 
-    predictor_sizes = np.array([conv4_3_norm_mbox_conf._keras_shape[1:3],
+    predictorSizes = np.array([conv4_3_norm_mbox_conf._keras_shape[1:3],
                                  fc7_mbox_conf._keras_shape[1:3],
                                  conv6_2_mbox_conf._keras_shape[1:3],
                                  conv7_2_mbox_conf._keras_shape[1:3],
                                  conv8_2_mbox_conf._keras_shape[1:3],
                                  conv9_2_mbox_conf._keras_shape[1:3]])
 
-    model_layer = dict([(layer.name, layer) for layer in model.layers])
+    modelLayers = dict([(layer.name, layer) for layer in model.layers])
 
     # for key in model_layer:
     #    model_layer[key].trainable = True
@@ -360,4 +413,4 @@ def mn_model(image_size,
     # model_layer = dict([(layer.name, layer) for layer in model.layers])
     # predictor_sizes = 0
 
-    return model, model_layer, img_input, predictor_sizes
+    return model, modelLayers, img_input, predictorSizes
