@@ -22,7 +22,7 @@ from keras.layers.noise import *
 import tensorflow as tf
 
 from keras.models import Model
-from keras.layers import Input, Lambda, Conv2D, MaxPooling2D
+from keras.layers import Conv2D, MaxPooling2D
 from keras.layers import BatchNormalization, ELU, Reshape, Concatenate, Activation
 
 from keras_layer_L2Normalization import L2Normalization

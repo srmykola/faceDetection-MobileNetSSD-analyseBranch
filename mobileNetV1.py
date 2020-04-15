@@ -1,8 +1,6 @@
-from keras.layers import Input
+from keras.layers import Input, Lambda
 
-from nnBlocks import separable_res_block1, relu6, DepthwiseConv2D
-from nnBlocks import _conv_block, bn_conv, bn_conv_layer
-from nnBlocks import add_inception, Scaling
+from nnBlocks import _conv_block
 from depthwiseBlocks import depthwiseConvBlockClassification
 
 def mobileNetV1( inputShape, alpha = 1.0, depthMultiplier = 1, imgHeight = 512, imgWidth = 512, imgChannels = 3 ):
