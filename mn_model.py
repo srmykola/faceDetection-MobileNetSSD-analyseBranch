@@ -29,8 +29,10 @@ from keras_layer_L2Normalization import L2Normalization
 from nnBlocks import separable_res_block1, relu6, DepthwiseConv2D
 from nnBlocks import _conv_block, bn_conv, bn_conv_layer
 from nnBlocks import add_inception, Scaling
-from depthwiseBlocks import depthwiseConvBlockDetection, depthwiseConvBlockClassification
+from depthwiseBlocks import depthwiseConvBlockDetection
 from depthwiseBlocks import depthwiseConvBlockAnalyseBackbone, depthwiseConvBlockAnalyseNeck
+
+from mobileNetV1 import mobileNetV1
 
 mobilenet = True
 separable_filter = False
@@ -128,42 +130,18 @@ def mn_model(image_size,
 
     print ("Height, Width, Channels :", image_size[0], image_size[1], image_size[2])
        # Input image format
-    img_height, img_width, img_channels = image_size[0], image_size[1], image_size[2]
+    imgHeight, imgWidth, imgChannels = image_size[0], image_size[1], image_size[2]
 
-    input_shape = (img_height, img_width, img_channels)
-
-    img_input = Input(shape=input_shape)
+    inputShape = ( imgHeight, imgWidth, imgChannels )
 
     alpha = 1.0
-    depth_multiplier = 1
+    depthMultiplier = 1
 
+    ''' mobileNetV1 feature extractor'''
+    analyseBranchIntersection, conv4_3, fc7, imgInput = mobileNetV1( inputShape, alpha = alpha, depthMultiplier = depthMultiplier,
+                                                                    imgHeight = imgHeight, imgWidth = imgWidth, imgChannels = imgChannels)
 
-    x = Lambda(lambda z: z/255., # Convert input feature range to [-1,1]
-              output_shape=(img_height, img_width, img_channels),
-               name='lambda1')(img_input)
-    x = Lambda(lambda z: z - 0.5, # Convert input feature range to [-1,1]
-                  output_shape=(img_height, img_width, img_channels),
-                   name='lambda2')(x)
-    x = Lambda(lambda z: z *2., # Convert input feature range to [-1,1]
-                  output_shape=(img_height, img_width, img_channels),
-                   name='lambda3')(x)
-
-    x = _conv_block(x, 32, alpha, strides=(2, 2))
-    x = depthwiseConvBlockClassification(x, 64, alpha, depth_multiplier, block_id=1)
-    x = depthwiseConvBlockClassification(x, 128, alpha, depth_multiplier, strides=(2, 2), block_id=2)
-    x = depthwiseConvBlockClassification(x, 128, alpha, depth_multiplier, block_id=3)
-    x = depthwiseConvBlockClassification(x, 256, alpha, depth_multiplier, strides=(2, 2), block_id=4)
-    x = depthwiseConvBlockClassification(x, 256, alpha, depth_multiplier, block_id=5)
-    x = depthwiseConvBlockClassification(x, 512, alpha, depth_multiplier, strides=(2, 2), block_id=6)
-    x = depthwiseConvBlockClassification(x, 512, alpha, depth_multiplier, block_id=7)
-    x = depthwiseConvBlockClassification(x, 512, alpha, depth_multiplier, block_id=8)
-    x = depthwiseConvBlockClassification(x, 512, alpha, depth_multiplier, block_id=9)
-    analyseBranchIntersection = depthwiseConvBlockClassification(x, 512, alpha, depth_multiplier, block_id=10)
-    conv4_3 = depthwiseConvBlockClassification( analyseBranchIntersection, 512, alpha, depth_multiplier, block_id = 11 ) #11 conv4_3 (300x300)-> 19x19
-
-    x = depthwiseConvBlockClassification( conv4_3, 1024, alpha, depth_multiplier, strides = (2, 2), block_id = 12 )   # (300x300) -> 10x10
-    fc7 = depthwiseConvBlockClassification(x, 1024, alpha, depth_multiplier, block_id=13) # 13 fc7 (300x300) -> 10x10
-
+    ''' SSD layers'''
     conv6_1 = bn_conv(fc7, 'detection_conv6_1', 256, 1, 1, subsample =(1,1), border_mode ='same', bias=conv_has_bias)
     conv6_2 = depthwiseConvBlockDetection(input = conv6_1, layer_name='detection_conv6_2', strides=(2,2),
                                         pointwise_conv_filters=512, alpha=alpha, depth_multiplier=depth_multiplier,
@@ -310,17 +288,17 @@ def mn_model(image_size,
     # Output shape of anchors: `(batch, height, width, n_boxes, 8)`
 
 
-    conv4_3_norm_mbox_priorbox = AnchorBoxes(img_height, img_width, this_scale=scales[0], next_scale=scales[1], aspect_ratios=aspect_ratios_conv4_3,
+    conv4_3_norm_mbox_priorbox = AnchorBoxes(imgHeight, imgWidth, this_scale=scales[0], next_scale=scales[1], aspect_ratios=aspect_ratios_conv4_3,
                                              two_boxes_for_ar1=two_boxes_for_ar1, limit_boxes=limit_boxes, variances=variances, coords=coords, normalize_coords=normalize_coords, name='detection_conv4_3_norm_mbox_priorbox')(conv4_3_norm)
-    fc7_mbox_priorbox = AnchorBoxes(img_height, img_width, this_scale=scales[1], next_scale=scales[2], aspect_ratios=aspect_ratios_fc7,
+    fc7_mbox_priorbox = AnchorBoxes(imgHeight, imgWidth, this_scale=scales[1], next_scale=scales[2], aspect_ratios=aspect_ratios_fc7,
                                     two_boxes_for_ar1=two_boxes_for_ar1, limit_boxes=limit_boxes, variances=variances, coords=coords, normalize_coords=normalize_coords, name='detection_fc7_mbox_priorbox')(fc7)
-    conv6_2_mbox_priorbox = AnchorBoxes(img_height, img_width, this_scale=scales[2], next_scale=scales[3], aspect_ratios=aspect_ratios_conv6_2,
+    conv6_2_mbox_priorbox = AnchorBoxes(imgHeight, imgWidth, this_scale=scales[2], next_scale=scales[3], aspect_ratios=aspect_ratios_conv6_2,
                                         two_boxes_for_ar1=two_boxes_for_ar1, limit_boxes=limit_boxes, variances=variances, coords=coords, normalize_coords=normalize_coords, name='detection_conv6_2_mbox_priorbox')(conv6_2)
-    conv7_2_mbox_priorbox = AnchorBoxes(img_height, img_width, this_scale=scales[3], next_scale=scales[4], aspect_ratios=aspect_ratios_conv7_2,
+    conv7_2_mbox_priorbox = AnchorBoxes(imgHeight, imgWidth, this_scale=scales[3], next_scale=scales[4], aspect_ratios=aspect_ratios_conv7_2,
                                         two_boxes_for_ar1=two_boxes_for_ar1, limit_boxes=limit_boxes, variances=variances, coords=coords, normalize_coords=normalize_coords, name='detection_conv7_2_mbox_priorbox')(conv7_2)
-    conv8_2_mbox_priorbox = AnchorBoxes(img_height, img_width, this_scale=scales[4], next_scale=scales[5], aspect_ratios=aspect_ratios_conv8_2,
+    conv8_2_mbox_priorbox = AnchorBoxes(imgHeight, imgWidth, this_scale=scales[4], next_scale=scales[5], aspect_ratios=aspect_ratios_conv8_2,
                                         two_boxes_for_ar1=two_boxes_for_ar1, limit_boxes=limit_boxes, variances=variances, coords=coords, normalize_coords=normalize_coords, name='detection_conv8_2_mbox_priorbox')(conv8_2)
-    conv9_2_mbox_priorbox = AnchorBoxes(img_height, img_width, this_scale=scales[5], next_scale=scales[6], aspect_ratios=aspect_ratios_conv9_2,
+    conv9_2_mbox_priorbox = AnchorBoxes(imgHeight, imgWidth, this_scale=scales[5], next_scale=scales[6], aspect_ratios=aspect_ratios_conv9_2,
                                         two_boxes_for_ar1=two_boxes_for_ar1, limit_boxes=limit_boxes, variances=variances, coords=coords, normalize_coords=normalize_coords, name='detection_conv9_2_mbox_priorbox')(conv9_2)
 
     ### Reshape
@@ -385,9 +363,7 @@ def mn_model(image_size,
     # Output shape of `predictions`: (batch, n_boxes_total, n_classes + 4 + 8)
     predictions = Concatenate( axis = 2, name = 'detection_predictions')([ mbox_conf_softmax, mbox_loc, mbox_priorbox, analyseHeatmapsSoftmax ])
 
-    model = Model( inputs = img_input, outputs = predictions )
-    #model = Model(inputs=img_input, outputs=predictions)
-
+    model = Model( inputs = imgInput, outputs = predictions )
 
 
     # Get the spatial dimensions (height, width) of the predictor conv layers, we need them to
@@ -413,4 +389,4 @@ def mn_model(image_size,
     # model_layer = dict([(layer.name, layer) for layer in model.layers])
     # predictor_sizes = 0
 
-    return model, modelLayers, img_input, predictorSizes
+    return model, modelLayers, imgInput, predictorSizes
