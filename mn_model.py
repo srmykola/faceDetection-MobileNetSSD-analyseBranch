@@ -190,10 +190,10 @@ def mn_model(image_size,
 
     ''' Analyse branch '''
 
-    conv4_3_analyse = depthwiseConvBlockAnalyseBackbone( analyseBranchIntersection, 512, alpha, depth_multiplier, block_id = 11 ) #11 conv4_3 (300x300)-> 19x19
+    conv4_3_analyse = depthwiseConvBlockAnalyseBackbone( analyseBranchIntersection, 512, alpha, depth_multiplier, block_id = 11, layer_name = 'conv4_3_analyse' ) #11 conv4_3 (300x300)-> 19x19
 
-    x_analyse = depthwiseConvBlockAnalyseBackbone( conv4_3_analyse, 1024, alpha, depth_multiplier, strides = (2, 2), block_id = 12 )   # (300x300) -> 10x10
-    fc7_analyse = depthwiseConvBlockAnalyseBackbone( x_analyse, 1024, alpha, depth_multiplier, block_id = 13 ) # 13 fc7 (300x300) -> 10x10
+    x_analyse = depthwiseConvBlockAnalyseBackbone( conv4_3_analyse, 1024, alpha, depth_multiplier, strides = (2, 2), block_id = 12, layer_name = 'x_analyse' )   # (300x300) -> 10x10
+    fc7_analyse = depthwiseConvBlockAnalyseBackbone( x_analyse, 1024, alpha, depth_multiplier, block_id = 13, layer_name = 'fc7_analyse' ) # 13 fc7 (300x300) -> 10x10
 
     conv6_1_analyse = bn_conv( fc7_analyse, 'analyse_conv6_1', 256, 1, 1, subsample =(1,1), border_mode ='same', bias=conv_has_bias)
     conv6_2_analyse = depthwiseConvBlockAnalyseNeck( input = conv6_1_analyse, layer_name='analyse_conv6_2', strides=(2,2),
